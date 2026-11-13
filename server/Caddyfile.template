@@ -1,0 +1,38 @@
+{
+    admin off
+    servers {
+        protocols h1 h2
+    }
+}
+
+@MATRIX_HOST@ {
+@TLS_DIRECTIVE@
+    @client path /_matrix/client/* /_matrix/media/* /.well-known/matrix/client
+    handle @client {
+        reverse_proxy synapse:8008
+    }
+
+    handle {
+        respond 404
+    }
+}
+
+@RTC_HOST@ {
+@TLS_DIRECTIVE@
+    @matrixRTC path /rtc /rtc/*
+    handle @matrixRTC {
+        reverse_proxy livekit:7880
+    }
+
+    @internalRoomAPI {
+        remote_ip @AUTH_IP@
+        path /twirp/livekit.RoomService/*
+    }
+    handle @internalRoomAPI {
+        reverse_proxy livekit:7880
+    }
+
+    handle {
+        respond 404
+    }
+}

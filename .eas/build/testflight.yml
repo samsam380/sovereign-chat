@@ -1,0 +1,31 @@
+build:
+  name: Archive Sovereign Chat for TestFlight
+  steps:
+    - eas/checkout
+    - eas/resolve_apple_team_id_from_credentials:
+        id: apple_team
+    - run:
+        name: Generate the native Xcode project
+        command: |
+          set -eu
+          xcodebuild -version
+          brew install python@3.12 xcodegen
+          bundle_id="$(node -p 'require("./app.json").expo.ios.bundleIdentifier')"
+          "$(brew --prefix python@3.12)/bin/python3.12" prepare_ios.py \
+            --matrix-host "$SOVEREIGN_MATRIX_HOST" \
+            --bundle-id "$bundle_id" \
+            --team-id "${ steps.apple_team.apple_team_id }" \
+            --output ios
+          cd ios
+          xcodegen generate
+    - eas/configure_ios_credentials:
+        id: signing
+    - eas/configure_ios_version:
+        inputs:
+          target_names: ${ steps.signing.target_names }
+    - eas/generate_gymfile_from_template:
+        inputs:
+          scheme: ElementX
+          credentials: ${ eas.job.secrets.buildCredentials }
+    - eas/run_fastlane
+    - eas/find_and_upload_build_artifacts

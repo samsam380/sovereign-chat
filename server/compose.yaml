@@ -1,0 +1,85 @@
+name: sovereign-chat-ios
+
+services:
+  edge:
+    image: caddy:2.11.9-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80/tcp"
+      - "443:443/tcp"
+    volumes:
+      - ${SC_STATE}/caddy:/etc/caddy:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      backend:
+        aliases: ["${SC_RTC_HOST}"]
+
+  synapse:
+    image: ghcr.io/element-hq/synapse:v1.165.0
+    restart: unless-stopped
+    user: "${SC_UID}:${SC_GID}"
+    entrypoint: ["python", "-m", "synapse.app.homeserver"]
+    command: ["-c", "/state/homeserver.json"]
+    environment:
+      PYTHONPATH: /opt/sovereign
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ${SC_STATE}/synapse:/state
+      - ./room_policy.py:/opt/sovereign/room_policy.py:ro
+    networks: [backend]
+
+  rtc-auth:
+    image: ghcr.io/element-hq/lk-jwt-service:0.10.0
+    restart: unless-stopped
+    user: "${SC_UID}:${SC_GID}"
+    environment:
+      LIVEKIT_URL: wss://${SC_RTC_HOST}
+      LIVEKIT_KEY_FILE: /state/livekit-key.yaml
+      LIVEKIT_FULL_ACCESS_HOMESERVERS: "${SC_MATRIX_HOST}"
+      LIVEKIT_REMOTE_CAN_PUBLISH_HOMESERVERS: ""
+      LIVEKIT_HS_SERVER_NAME: "${SC_MATRIX_HOST}"
+      LIVEKIT_CS_API_URL_OVERRIDES: "${SC_MATRIX_HOST}=http://synapse:8008"
+      LIVEKIT_AS_REGISTRATION_FILE: /state/registration.json
+      LIVEKIT_LOG_LEVEL: warn
+    volumes:
+      - ${SC_STATE}/rtc-auth:/state:ro
+    networks:
+      backend:
+        ipv4_address: "${SC_AUTH_IP}"
+
+  livekit:
+    image: livekit/livekit-server:v1.13.11
+    restart: unless-stopped
+    user: "${SC_UID}:${SC_GID}"
+    command: ["--config", "/state/livekit.json"]
+    ports:
+      - "7881:7881/tcp"
+      - "7882:7882/udp"
+      - "3478:3478/udp"
+    volumes:
+      - ${SC_STATE}/livekit:/state:ro
+    networks: [backend]
+
+  push:
+    image: matrixdotorg/sygnal:v0.17.0
+    profiles: [push]
+    restart: unless-stopped
+    user: "${SC_UID}:${SC_GID}"
+    environment:
+      SYGNAL_CONF: /state/sygnal.json
+    volumes:
+      - ${SC_STATE}/push:/state:ro
+    networks:
+      backend:
+        ipv4_address: "${SC_PUSH_IP}"
+
+networks:
+  backend:
+    ipam:
+      config:
+        - subnet: "${SC_SUBNET}"
+
+volumes:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,8 @@
+{
+  "name": "sovereign-chat-ios-build",
+  "version": "0.2.0",
+  "private": true,
+  "devDependencies": {
+    "expo-modules-autolinking": "58.1.0"
+  }
+}

@@ -1,0 +1,44 @@
+# Server state: live keys, secrets, database, certificates, user data
+ios-server-state/
+**/ios-server-state/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.p8
+*.p12
+*.pfx
+*.pem
+*.key
+*.mobileprovision
+*.cer
+*.crt
+*.keystore
+*.jks
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+.private/
+# Generated projects and build output
+ios-project/
+ios/
+node_modules/
+.expo/
+*.xcarchive
+*.ipa
+*.app
+*.dSYM/
+DerivedData/
+build/
+# Caches, editor files
+__pycache__/
+*.pyc
+.DS_Store
+.idea/
+.vscode/
+# Local EAS credentials (keep the workflow YAML)
+.eas/credentials/
+credentials.json

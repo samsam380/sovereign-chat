@@ -1,0 +1,13 @@
+/*
+!/.eas
+!/.easignore
+!/app.json
+!/eas.json
+!/package.json
+!/package-lock.json
+!/prepare_ios.py
+!/settings.py
+!/brand
+!/patches
+!/vendor
+!/LICENSE

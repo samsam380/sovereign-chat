@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "Sovereign Chat",
+    "slug": "sovereign-chat",
+    "version": "0.2.0",
+    "ios": {
+      "bundleIdentifier": "com.example.sovereignchat",
+      "buildNumber": "1",
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.example.sovereignchat"
+        ]
+      }
+    },
+    "extra": {
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "NSE",
+                  "bundleIdentifier": "com.example.sovereignchat.nse",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.example.sovereignchat"
+                    ]
+                  }
+                },
+                {
+                  "targetName": "ShareExtension",
+                  "bundleIdentifier": "com.example.sovereignchat.shareextension",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.example.sovereignchat"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,406 @@
+diff --git a/Components/Secrets/Secrets.swift b/Components/Secrets/Secrets.swift
+index d8b096c..c210010 100644
+--- a/Components/Secrets/Secrets.swift
++++ b/Components/Secrets/Secrets.swift
+@@ -1,9 +1,9 @@
+ nonisolated enum Secrets {
+-    static let sentryDSN: String? = "https://username@sentry.localhost/project_id"
+-    static let sentryRustDSN: String? = "https://username@sentry.localhost/project_id"
+-    static let postHogHost: String? = "https://posthog.localhost"
+-    static let postHogAPIKey: String? = "your_key"
+-    static let rageshakeURL: String? = "https://rageshake.localhost/submit"
+-    static let mapLibreAPIKey: String? = "your_key"
++    static let sentryDSN: String? = nil
++    static let sentryRustDSN: String? = nil
++    static let postHogHost: String? = nil
++    static let postHogAPIKey: String? = nil
++    static let rageshakeURL: String? = nil
++    static let mapLibreAPIKey: String? = nil
+ 
+ }
+\ No newline at end of file
+diff --git a/ElementX/Sources/Application/Settings/AppSettings.swift b/ElementX/Sources/Application/Settings/AppSettings.swift
+index d4c9e8f..fdbd062 100644
+--- a/ElementX/Sources/Application/Settings/AppSettings.swift
++++ b/ElementX/Sources/Application/Settings/AppSettings.swift
+@@ -124,27 +124,28 @@ final nonisolated class AppSettings: @unchecked Sendable {
+     ///
+     /// Account provider is the friendly term for the server name. It should not contain an `https` prefix and should
+     /// match the last part of the user ID. For example `example.com` and not `https://matrix.example.com`.
+-    private(set) var accountProviders: [AccountProvider] = [.managed(serverName: "matrix.org", baseURL: "https://matrix-client.matrix.org")]
++    private(set) var accountProviders: [AccountProvider] = [.managed(serverName: SovereignConfiguration.serverName,
++                                                                       baseURL: SovereignConfiguration.homeserverURL)]
+     /// Whether or not the user is allowed to manually enter their own account provider or must select from one of `defaultAccountProviders`.
+-    private(set) var allowOtherAccountProviders = true
++    private(set) var allowOtherAccountProviders = false
+     /// Whether the components surrounding the app brand/logo should be hidden or not
+     private(set) var hideBrandChrome = false
+     
+     /// The task identifier used for background app refresh. Also used in main target's the Info.plist
+-    let backgroundAppRefreshTaskIdentifier = "io.element.elementx.background.refresh"
++    let backgroundAppRefreshTaskIdentifier = "\(InfoPlistReader.main.baseBundleIdentifier).background.refresh"
+     /// The task identifier used for the search index backfill. Also used in main target's the Info.plist
+-    let searchBackfillTaskIdentifier = "io.element.elementx.background.search-backfill"
++    let searchBackfillTaskIdentifier = "\(InfoPlistReader.main.baseBundleIdentifier).background.search-backfill"
+     
+     /// A URL where users can go read more about the app.
+-    private(set) var websiteURL: URL = "https://element.io"
++    private(set) var websiteURL: URL = SovereignConfiguration.homeserverURL
+     /// A URL that contains the app's logo that may be used when showing content in a web view.
+-    private(set) var logoURL: URL = "https://element.io/mobile-icon.png"
++    private(set) var logoURL: URL = SovereignConfiguration.homeserverURL.appending(path: "sovereign/icon.png")
+     /// A URL that contains that app's copyright notice.
+     private(set) var copyrightURL: URL = "https://element.io/copyright"
+     /// A URL that contains the app's Terms of use.
+     private(set) var acceptableUseURL: URL = "https://element.io/acceptable-use-policy-terms"
+     /// A URL that contains the app's Privacy Policy.
+-    private(set) var privacyURL: URL = "https://element.io/privacy"
++    private(set) var privacyURL: URL = SovereignConfiguration.homeserverURL.appending(path: "sovereign/privacy")
+     /// A URL where users can go read more about encryption in general.
+     private(set) var encryptionURL: URL = "https://element.io/help#encryption"
+     /// A URL where users can go read more about device verification..
+@@ -157,9 +158,9 @@ final nonisolated class AppSettings: @unchecked Sendable {
+     private(set) var historySharingDetailsURL: URL = "https://element.io/en/help#e2ee-history-sharing"
+     
+     /// Any domains that Element web may be hosted on - used for handling links.
+-    private(set) var elementWebHosts = ["app.element.io", "staging.element.io", "develop.element.io"]
++    private(set) var elementWebHosts: [String] = []
+     /// The domain that account provisioning links will be hosted on - used for handling the links.
+-    private(set) var accountProvisioningHost = "mobile.element.io"
++    private(set) var accountProvisioningHost = SovereignConfiguration.serverName
+     /// The App Store URL for Element Pro, shown to the user when a homeserver requires that app.
+     /// **Note:** This property isn't overridable as it in unexpected for forks to come across the error (or to even have a "Pro" app).
+     let elementProAppStoreURL: URL = "https://apps.apple.com/app/element-pro-for-work/id6502951615"
+@@ -194,10 +195,10 @@ final nonisolated class AppSettings: @unchecked Sendable {
+     // MARK: - Authentication
+     
+     /// Any pre-defined static client registrations for OAuth issuers.
+-    let oAuthStaticRegistrations: [URL: String] = ["https://id.thirdroom.io/realms/thirdroom": "elementx"]
++    let oAuthStaticRegistrations: [URL: String] = [:]
+     /// The redirect URL used for OAuth. For the normal case we don't actually need the bundle ID as the web authentication session handles the redirect internally.
+     /// However in the case where MAS sends the user to an external app, we need to make sure that the system will open the correct variant of the app (e.g. Nightly).
+-    private(set) nonisolated(unsafe) var oAuthRedirectURL: URL! = URL(string: "https://element.io/oauth/ios/\(InfoPlistReader.main.bundleIdentifier)")
++    private(set) nonisolated(unsafe) var oAuthRedirectURL: URL! = SovereignConfiguration.homeserverURL.appending(path: "sovereign/oauth")
+     /// A path that is appended to `websiteURL` to form the OAuth `clientURI`. MAS uses `clientURI` as the identifier for a specific app, allowing us to
+     /// distinguish the various clients we have for Android, iOS and Web from each other.
+     /// Intentionally a distinct property so it can be easily overridden without having to manipulate the website URL.
+@@ -216,7 +217,7 @@ final nonisolated class AppSettings: @unchecked Sendable {
+     /// Whether or not the Create Account button is shown on the start screen.
+     ///
+     /// **Note:** Setting this to false doesn't prevent someone from creating an account when the selected homeserver's MAS allows registration.
+-    let showCreateAccountButton = true
++    let showCreateAccountButton = false
+     
+     // MARK: - Notifications
+     
+@@ -228,7 +229,7 @@ final nonisolated class AppSettings: @unchecked Sendable {
+         #endif
+     }
+     
+-    private(set) var pushGatewayBaseURL: URL = "https://matrix.org"
++    private(set) var pushGatewayBaseURL: URL = SovereignConfiguration.pushGatewayURL
+     var pushGatewayNotifyEndpoint: URL {
+         pushGatewayBaseURL.appending(path: "_matrix/push/v1/notify")
+     }
+@@ -265,7 +266,7 @@ final nonisolated class AppSettings: @unchecked Sendable {
+     /// The configuration to use for analytics. Set to `nil` to disable analytics.
+     let analyticsConfiguration: AnalyticsConfiguration? = AppSettings.makeAnalyticsConfiguration()
+     /// The URL to open with more information about analytics terms. When this is `nil` the "Learn more" link will be hidden.
+-    private(set) var analyticsTermsURL: URL? = "https://element.io/cookie-policy"
++    private(set) var analyticsTermsURL: URL?
+     /// Whether or not there the app is able ask for user consent to enable analytics or sentry reporting.
+     var canPromptForAnalytics: Bool {
+         analyticsConfiguration != nil || bugReportSentryURL != nil
+@@ -341,7 +342,7 @@ final nonisolated class AppSettings: @unchecked Sendable {
+     
+     // MARK: - Feature Flags
+     
+-    @UserPreference(defaultValue: AppBuildType.current != .release)
++    @UserPreference(defaultValue: false)
+     var developerOptionsEnabled: Bool
+     
+     @UserPreference(defaultValue: false)
+@@ -354,7 +355,7 @@ final nonisolated class AppSettings: @unchecked Sendable {
+     var mentionsFilterEnabled: Bool
+     
+     /// Configuration to enable only signed device isolation mode for  crypto. In this mode only devices signed by their owner will be considered in e2ee rooms.
+-    @UserPreference(defaultValue: false)
++    @UserPreference(defaultValue: true)
+     var enableOnlySignedDeviceIsolationMode: Bool
+     
+     @UserPreference(defaultValue: false)
+diff --git a/ElementX/Sources/FlowCoordinators/UserSessionFlowCoordinator.swift b/ElementX/Sources/FlowCoordinators/UserSessionFlowCoordinator.swift
+index fe21bb4..a77613f 100644
+--- a/ElementX/Sources/FlowCoordinators/UserSessionFlowCoordinator.swift
++++ b/ElementX/Sources/FlowCoordinators/UserSessionFlowCoordinator.swift
+@@ -481,7 +481,7 @@ class UserSessionFlowCoordinator: FlowCoordinatorProtocol {
+                                                clientProxy: userSession.clientProxy,
+                                                clientID: InfoPlistReader.main.bundleIdentifier,
+                                                elementCallBaseURL: userSession.userSettings.app.elementCallBaseURL,
+-                                               elementCallBaseURLOverride: userSession.userSettings.app.elementCallBaseURLOverride,
++                                               elementCallBaseURLOverride: nil,
+                                                voiceOnly: voiceOnly,
+                                                colorScheme: colorScheme),
+                           answeredFromCallKit: answeredFromCallKit)
+@@ -489,13 +489,6 @@ class UserSessionFlowCoordinator: FlowCoordinatorProtocol {
+     
+     private var callScreenPictureInPictureController: AVPictureInPictureController?
+     private func presentCallScreen(configuration: ElementCallConfiguration, answeredFromCallKit: Bool) {
+-        // The service runs native calls and drives their screen through its own actions.
+-        if userSession.elementCallService.handleNativeCallRequest(roomProxy: configuration.roomProxy,
+-                                                                  isVoiceCall: configuration.voiceOnly,
+-                                                                  answeredFromCallKit: answeredFromCallKit) {
+-            return
+-        }
+-        
+         guard userSession.elementCallService.ongoingCallRoomIDPublisher.value != configuration.callRoomID else {
+             MXLog.info("Returning to existing call.")
+             callScreenPictureInPictureController?.stopPictureInPicture()
+diff --git a/ElementX/Sources/Services/Authentication/AuthenticationService.swift b/ElementX/Sources/Services/Authentication/AuthenticationService.swift
+index c762ca7..85303f6 100644
+--- a/ElementX/Sources/Services/Authentication/AuthenticationService.swift
++++ b/ElementX/Sources/Services/Authentication/AuthenticationService.swift
+@@ -264,11 +264,15 @@ class AuthenticationService: AuthenticationServiceProtocol {
+     // MARK: - Private
+     
+     private func makeClient(serverNameOrBaseURL: String) async throws -> ClientProtocol {
++        guard serverNameOrBaseURL == SovereignConfiguration.serverName ||
++            serverNameOrBaseURL == SovereignConfiguration.homeserverURL.absoluteString else {
++            throw AuthenticationServiceError.invalidServerNameOrBaseURL
++        }
+         // Use a fresh session directory each time the user enters a different server
+         // so that caches (e.g. server versions) are always fresh for the new server.
+         rotateSessionDirectory()
+         
+-        let client = try await clientFactory.makeAuthenticationClient(serverNameOrBaseURL: serverNameOrBaseURL,
++        let client = try await clientFactory.makeAuthenticationClient(serverNameOrBaseURL: SovereignConfiguration.homeserverURL.absoluteString,
+                                                                       sessionDirectories: sessionDirectories,
+                                                                       passphrase: passphrase,
+                                                                       clientSessionDelegate: userSessionManager.clientSessionDelegate,
+diff --git a/ElementX/Sources/Services/ElementCall/ElementCallManager.swift b/ElementX/Sources/Services/ElementCall/ElementCallManager.swift
+index 29e6d01..0992e9e 100644
+--- a/ElementX/Sources/Services/ElementCall/ElementCallManager.swift
++++ b/ElementX/Sources/Services/ElementCall/ElementCallManager.swift
+@@ -105,7 +105,7 @@ final class ElementCallManager: NSObject, ElementCallManagerProtocol, PKPushRegi
+         } else {
+             let configuration = CXProviderConfiguration()
+             configuration.supportsVideo = true
+-            configuration.includesCallsInRecents = true
++            configuration.includesCallsInRecents = false
+             
+             if let callKitIcon = UIImage(named: "images/app-logo") {
+                 configuration.iconTemplateImageData = callKitIcon.pngData()
+@@ -120,7 +120,9 @@ final class ElementCallManager: NSObject, ElementCallManagerProtocol, PKPushRegi
+         super.init()
+         
+         pushRegistry.delegate = self
+-        pushRegistry.desiredPushTypes = [.voIP]
++        if SovereignConfiguration.lockScreenCallsEnabled {
++            pushRegistry.desiredPushTypes = [.voIP]
++        }
+         
+         self.callProvider.setDelegate(self, queue: nil)
+     }
+diff --git a/ElementX/Sources/Services/ElementCall/ElementCallWidgetDriver.swift b/ElementX/Sources/Services/ElementCall/ElementCallWidgetDriver.swift
+index deb6d5e..e532cee 100644
+--- a/ElementX/Sources/Services/ElementCall/ElementCallWidgetDriver.swift
++++ b/ElementX/Sources/Services/ElementCall/ElementCallWidgetDriver.swift
+@@ -78,7 +78,9 @@ final class ElementCallWidgetDriver: WidgetCapabilitiesProvider, ElementCallWidg
+             return .failure(.roomInvalid)
+         }
+         
+-        async let useEncryption = (try? room.latestEncryptionState() == .encrypted) ?? false
++        guard (try? await room.latestEncryptionState()) == .encrypted else {
++            return .failure(.encryptionRequired)
++        }
+         async let intent = room.joinCallIntent(voiceOnly: voiceOnly)
+         
+         let widgetSettings: WidgetSettings
+@@ -88,7 +90,7 @@ final class ElementCallWidgetDriver: WidgetCapabilitiesProvider, ElementCallWidg
+                                                                                 parentUrl: nil,
+                                                                                 fontScale: nil,
+                                                                                 font: nil,
+-                                                                                encryption: useEncryption ? .perParticipantKeys : .unencrypted,
++                                                                                encryption: .perParticipantKeys,
+                                                                                 posthogUserId: nil,
+                                                                                 posthogApiHost: analyticsConfiguration?.posthogAPIHost,
+                                                                                 posthogApiKey: analyticsConfiguration?.posthogAPIKey,
+diff --git a/ElementX/Sources/Services/ElementCall/ElementCallWidgetDriverProtocol.swift b/ElementX/Sources/Services/ElementCall/ElementCallWidgetDriverProtocol.swift
+index 53b9f6a..dff5e56 100644
+--- a/ElementX/Sources/Services/ElementCall/ElementCallWidgetDriverProtocol.swift
++++ b/ElementX/Sources/Services/ElementCall/ElementCallWidgetDriverProtocol.swift
+@@ -11,6 +11,7 @@ import SwiftUI
+ 
+ enum ElementCallWidgetDriverError: Error {
+     case roomInvalid
++    case encryptionRequired
+     case failedBuildingCallURL
+     case failedBuildingWidgetSettings
+     case failedBuildingWidgetDriver
+diff --git a/ElementX/Sources/Services/Notification/Manager/NotificationManager.swift b/ElementX/Sources/Services/Notification/Manager/NotificationManager.swift
+index 7c8ffe7..64596b1 100644
+--- a/ElementX/Sources/Services/Notification/Manager/NotificationManager.swift
++++ b/ElementX/Sources/Services/Notification/Manager/NotificationManager.swift
+@@ -147,6 +147,7 @@ final class NotificationManager: NSObject, NotificationManagerProtocol {
+     }
+     
+     private func requestAuthorization() {
++        guard SovereignConfiguration.pushEnabled else { return }
+         guard isAnyAccountEnabled else { return }
+         Task {
+             do {
+@@ -164,6 +165,7 @@ final class NotificationManager: NSObject, NotificationManagerProtocol {
+     /// Registers again when permission was given before, otherwise the onboarding flow asks for it.
+     /// Accounts that are turned off need the token too, to delete any pusher left on their homeserver.
+     private func registerForRemoteNotificationsIfAuthorized() {
++        guard SovereignConfiguration.pushEnabled else { return }
+         Task {
+             guard await notificationCenter.authorizationStatus() == .authorized else { return }
+             delegate?.registerForRemoteNotifications()
+diff --git a/ElementX/Sources/Services/Notification/Service/NotificationService.swift b/ElementX/Sources/Services/Notification/Service/NotificationService.swift
+index 7e5805a..3a21d3d 100644
+--- a/ElementX/Sources/Services/Notification/Service/NotificationService.swift
++++ b/ElementX/Sources/Services/Notification/Service/NotificationService.swift
+@@ -123,6 +123,7 @@ final class NotificationService: NotificationServiceProtocol {
+     
+     /// Sets the pusher when enabled and deletes it otherwise. Nothing to update until the device token is known.
+     private func updatePusher(isEnabled: Bool) async {
++        guard SovereignConfiguration.pushEnabled else { return }
+         guard let deviceToken else { return }
+         
+         let identifiers = PusherIdentifiers(pushkey: deviceToken.base64EncodedString(), appId: userSettings.app.pusherAppID)
+diff --git a/ElementX/SupportingFiles/target.yml b/ElementX/SupportingFiles/target.yml
+index 2f2379c..771167c 100644
+--- a/ElementX/SupportingFiles/target.yml
++++ b/ElementX/SupportingFiles/target.yml
+@@ -75,19 +75,14 @@ targets:
+         appGroupIdentifier: $(APP_GROUP_IDENTIFIER)
+         baseBundleIdentifier: $(BASE_BUNDLE_IDENTIFIER)
+         keychainAccessGroupIdentifier: $(KEYCHAIN_ACCESS_GROUP_IDENTIFIER)
+-        classicAppGroupIdentifier: $(CLASSIC_APP_GROUP_IDENTIFIER)
+-        classicAppKeychainServiceIdentifier: $(CLASSIC_APP_KEYCHAIN_SERVICE_IDENTIFIER)
+-        classicAppKeychainAccessGroupIdentifier: $(CLASSIC_APP_KEYCHAIN_ACCESS_GROUP_IDENTIFIER)
+-        classicAppDeepLinkURL: $(CLASSIC_APP_DEEP_LINK_URL)
+         productionAppName: $(PRODUCTION_APP_NAME)
+         isNightlyBuild: $(IS_NIGHTLY_BUILD)
+-        ITSAppUsesNonExemptEncryption: false
+         NSUserActivityTypes: [
+           INSendMessageIntent,
+           INStartCallIntent,
+         ]
+-        NSCameraUsageDescription: To take pictures or videos and send them as a message $(APP_DISPLAY_NAME) needs access to the camera.
+-        NSMicrophoneUsageDescription: To record and send messages with audio, $(APP_DISPLAY_NAME) needs to access the microphone.
++        NSCameraUsageDescription: Sovereign Chat uses the camera for video calls and to send photos and videos.
++        NSMicrophoneUsageDescription: Sovereign Chat uses the microphone for calls and voice messages.
+         NSPhotoLibraryAddUsageDescription: This lets you save images and videos to your photo library.
+         NSLocationWhenInUseUsageDescription: Grant location access so that $(APP_DISPLAY_NAME) can share your location.
+         NSLocationAlwaysAndWhenInUseUsageDescription: To share your live location, $(APP_DISPLAY_NAME) needs location access when the app is in the background.
+@@ -100,8 +95,8 @@ targets:
+           location
+         ]
+         BGTaskSchedulerPermittedIdentifiers: [
+-          io.element.elementx.background.refresh,
+-          io.element.elementx.background.search-backfill
++          "$(BASE_BUNDLE_IDENTIFIER).background.refresh",
++          "$(BASE_BUNDLE_IDENTIFIER).background.search-backfill"
+         ]
+         UTExportedTypeDeclarations:
+         - UTTypeConformsTo: [public.text]
+@@ -117,25 +112,13 @@ targets:
+     entitlements:
+       path: ElementX.entitlements
+       properties:
+-        aps-environment: development
+-        com.apple.developer.associated-domains:
+-        - applinks:element.io
+-        - applinks:app.element.io
+-        - applinks:staging.element.io
+-        - applinks:develop.element.io
+-        - applinks:mobile.element.io
+-        - applinks:matrix.to
+-        # - applinks:localhost?mode=developer # developer mode only works with https (but self-signed is fine).
+-        - webcredentials:*.element.io
+-        com.apple.developer.usernotifications.communication: true
++        # Sovereign Chat push entitlement
+         com.apple.security.app-sandbox: true
+         com.apple.security.application-groups:
+         - $(APP_GROUP_IDENTIFIER)
+-        - $(CLASSIC_APP_GROUP_IDENTIFIER)
+         com.apple.security.network.client: true
+         keychain-access-groups:
+         - $(KEYCHAIN_ACCESS_GROUP_IDENTIFIER)
+-        - $(CLASSIC_APP_KEYCHAIN_ACCESS_GROUP_IDENTIFIER)
+ 
+     settings:
+       base:
+@@ -154,6 +137,11 @@ targets:
+         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+         OTHER_SWIFT_FLAGS:
+         - "-DIS_MAIN_APP"
++      configs:
++        Debug:
++          SOVEREIGN_APS_ENVIRONMENT: development
++        Release:
++          SOVEREIGN_APS_ENVIRONMENT: production
+ 
+     preBuildScripts:
+     - name: 🛠 SwiftGen
+diff --git a/NSE/SupportingFiles/target.yml b/NSE/SupportingFiles/target.yml
+index c9b5c14..67b0a4e 100644
+--- a/NSE/SupportingFiles/target.yml
++++ b/NSE/SupportingFiles/target.yml
+@@ -62,7 +62,7 @@ targets:
+     entitlements:
+       path: NSE.entitlements
+       properties:
+-        com.apple.developer.usernotifications.filtering: true
++        # Sovereign Chat notification filtering entitlement
+         com.apple.security.application-groups:
+         - $(APP_GROUP_IDENTIFIER)
+         keychain-access-groups:
+diff --git a/app.yml b/app.yml
+index 29b3f56..686d95f 100644
+--- a/app.yml
++++ b/app.yml
+@@ -1,14 +1,8 @@
+ settings:
+-  APP_DISPLAY_NAME: Element X
+-  PRODUCTION_APP_NAME: Element
+-  APP_GROUP_IDENTIFIER: group.io.element
+-  BASE_BUNDLE_IDENTIFIER: io.element.elementx
++  APP_DISPLAY_NAME: Sovereign Chat
++  PRODUCTION_APP_NAME: Sovereign Chat
++  APP_GROUP_IDENTIFIER: group.net.example.sovereignchat
++  BASE_BUNDLE_IDENTIFIER: net.example.sovereignchat
+   ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: "colors/accent-color"
+-  DEVELOPMENT_TEAM: 7J4U792NQT
++  DEVELOPMENT_TEAM: ""
+   IS_NIGHTLY_BUILD: false
+-
+-  # Optional configuration to load accounts from Element Classic.
+-  CLASSIC_APP_GROUP_IDENTIFIER: group.im.vector
+-  CLASSIC_APP_KEYCHAIN_SERVICE_IDENTIFIER: im.vector.app.encryption-manager-service
+-  CLASSIC_APP_KEYCHAIN_ACCESS_GROUP_IDENTIFIER: "$(DEVELOPMENT_TEAM).im.vector.app.keychain.shared"
+-  CLASSIC_APP_DEEP_LINK_URL: "element://open"
+diff --git a/project.yml b/project.yml
+index 50e2a25..4b20520 100644
+--- a/project.yml
++++ b/project.yml
+@@ -1,7 +1,7 @@
+ ---
+ name: ElementX
+ attributes:
+-  ORGANIZATIONNAME: Element
++  ORGANIZATIONNAME: Sovereign Chat
+   LastUpgradeCheck: "1620"
+   
+ fileGroups:
+@@ -51,7 +51,7 @@ settings:
+   ENABLE_BITCODE: false
+   APP_NAME: ElementX
+   KEYCHAIN_ACCESS_GROUP_IDENTIFIER: "$(DEVELOPMENT_TEAM).$(BASE_BUNDLE_IDENTIFIER)"
+-  MARKETING_VERSION: 26.11.0
++  MARKETING_VERSION: 0.2.0
+   CURRENT_PROJECT_VERSION: 1
+   SUPPORTS_MACCATALYST: false
+   ARCHS: arm64
